@@ -22,8 +22,6 @@ import pickle
 import time
 from contextlib import nullcontext
 
-from tqdm import tqdm
-
 import numpy as np
 import torch
 from torch.distributed import destroy_process_group, init_process_group
@@ -258,23 +256,38 @@ if ddp:
 
 
 # helps estimate an arbitrarily accurate loss over either split using many batches
+#@torch.no_grad()
+#def estimate_loss():
+#    out = {}
+#    model.eval()
+#    for split in ["train", "val"]:
+#        losses = torch.zeros(eval_iters)
+#        with tqdm(range(eval_iters), desc=f"Evaluating {split}") as pbar:
+#            for k in pbar:
+#                X, Y = get_batch(split)
+#                with ctx:
+#                    logits, loss = model(X, Y)
+#                losses[k] = loss.item()
+#                pbar.set_postfix(loss=losses[: k + 1].mean().item())  # Show running average loss
+#        out[split] = losses.mean()
+#    model.train()
+#    return out
+
+
 @torch.no_grad()
 def estimate_loss():
     out = {}
     model.eval()
     for split in ["train", "val"]:
         losses = torch.zeros(eval_iters)
-        with tqdm(range(eval_iters), desc=f"Evaluating {split}") as pbar:
-            for k in pbar:
-                X, Y = get_batch(split)
-                with ctx:
-                    logits, loss = model(X, Y)
-                losses[k] = loss.item()
-                pbar.set_postfix(loss=losses[: k + 1].mean().item())  # Show running average loss
+        for k in range(eval_iters):
+            X, Y = get_batch(split)
+            with ctx:
+                logits, loss = model(X, Y)
+            losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
     return out
-
 
 
 # learning rate decay scheduler (cosine with warmup)
