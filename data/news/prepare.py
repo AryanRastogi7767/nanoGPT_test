@@ -8,7 +8,7 @@ from datasets import load_dataset
 dataset = load_dataset("ag_news", split="train")
 
 # Define paths
-data_dir = "data/news_articles"
+data_dir = "data/news"
 os.makedirs(data_dir, exist_ok=True)
 input_file_path = os.path.join(data_dir, "input.txt")
 
