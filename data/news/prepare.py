@@ -1,22 +1,32 @@
 import os
 import pickle
+
 import numpy as np
 from datasets import load_dataset
 
-# Load a news dataset (CC-News for diverse articles)
-dataset = load_dataset("cc_news", split="train")
-text_data = "\n".join(dataset["text"])  # Combine all articles into a single text
+# Load a smaller news dataset (AG News)
+dataset = load_dataset("ag_news", split="train")
 
 # Define paths
 data_dir = "data/news_articles"
 os.makedirs(data_dir, exist_ok=True)
 input_file_path = os.path.join(data_dir, "input.txt")
 
-# Save dataset to input.txt
-with open(input_file_path, "w", encoding="utf-8") as f:
-    f.write(text_data)
 
-print(f"Dataset saved at {input_file_path}. Length: {len(text_data):,} characters.")
+# Process and save data in smaller chunks
+def process_and_save(dataset, file_path, chunk_size=5000):
+    with open(file_path, "w", encoding="utf-8") as f:
+        for i in range(0, len(dataset), chunk_size):
+            batch_texts = "\n".join(dataset[i : i + chunk_size]["text"])
+            f.write(batch_texts + "\n")
+
+
+process_and_save(dataset, input_file_path)
+print(f"Dataset saved at {input_file_path}.")
+
+# Read back the text for processing
+with open(input_file_path, "r", encoding="utf-8") as f:
+    text_data = f.read()
 
 # Get unique characters
 chars = sorted(list(set(text_data)))
@@ -28,6 +38,7 @@ stoi = {ch: i for i, ch in enumerate(chars)}
 itos = {i: ch for i, ch in enumerate(chars)}
 
 
+# Function to encode/decode
 def encode(s):
     return [stoi.get(c, 0) for c in s]  # Handle unknown chars
 
@@ -41,9 +52,10 @@ n = len(text_data)
 train_data = text_data[: int(n * 0.9)]
 val_data = text_data[int(n * 0.9) :]
 
-# Encode to integers
-train_ids = np.array(encode(train_data), dtype=np.uint16)
-val_ids = np.array(encode(val_data), dtype=np.uint16)
+# Encode to integers (Use uint8 if vocab_size <= 256, otherwise use uint16)
+dtype = np.uint8 if vocab_size <= 256 else np.uint16
+train_ids = np.array(encode(train_data), dtype=dtype)
+val_ids = np.array(encode(val_data), dtype=dtype)
 
 # Save binary files
 train_ids.tofile(os.path.join(data_dir, "train.bin"))
